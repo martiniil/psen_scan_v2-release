@@ -19,7 +19,10 @@
 #include <chrono>
 #include <console_bridge/console.h>
 #include <sstream>
+
 #include <fmt/core.h>
+#include <fmt/ranges.h>
+#include <fmt/ostream.h>
 
 #define PSENSCAN_LOG(name, file, line, level, ...)                                                                     \
   do                                                                                                                   \
