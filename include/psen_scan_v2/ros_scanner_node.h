@@ -26,7 +26,7 @@
 
 #include <ros/ros.h>
 
-#include "psen_scan_v2/scanner.h"
+#include "psen_scan_v2/scanner_v2.h"
 #include "psen_scan_v2/laserscan_ros_conversions.h"
 
 namespace psen_scan_v2
@@ -37,7 +37,7 @@ using namespace std::chrono_literals;
  * @brief ROS Node for fetching and publishing laserscan data from the scanner.
  *
  */
-template <typename S = Scanner>
+template <typename S = ScannerV2>
 class ROSScannerNodeT
 {
 public:
@@ -77,6 +77,7 @@ private:
   FRIEND_TEST(RosScannerNodeTests, testScanTopicReceived);
   FRIEND_TEST(RosScannerNodeTests, testScanBuildFailure);
   FRIEND_TEST(RosScannerNodeTests, testMissingStopReply);
+  FRIEND_TEST(RosScannerNodeTests, shouldNotInvokeUserCallbackInCaseOfEmptyLaserScan);
 };
 
 typedef ROSScannerNodeT<> ROSScannerNode;
@@ -98,6 +99,11 @@ ROSScannerNodeT<S>::ROSScannerNodeT(ros::NodeHandle& nh,
 template <typename S>
 void ROSScannerNodeT<S>::laserScanCallback(const LaserScan& scan)
 {
+  if (scan.getMeasurements().empty())
+  {
+    return;
+  }
+
   pub_.publish(toLaserScanMsg(scan, prefix_, x_axis_rotation_));
 }
 

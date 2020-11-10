@@ -1,6 +1,16 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package psen_scan_v2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+0.1.1 (2020-11-10)
+------------------
+* Add intensity data to LaserScan
+* Print user message if dropped MonitoringFrames are detected
+* Print user message in case of timeout while waiting for MonitoringFrames
+* Adjust min and max scanner range. Fixes #70
+* Print diagnostic messages from PSENscan
+* Notify user about start retry
+* Add Continuous Acceptance Test
+* Contributors: Pilz GmbH and Co. KG
 
 0.1.0 (2020-10-19)
 ------------------
