@@ -97,13 +97,16 @@ include_directories(
 )
 
 set(${PROJECT_NAME}_sources
-  src/controller_state_machine.cpp
+  src/scanner_v2.cpp
   src/laserscan.cpp
   src/monitoring_frame_msg.cpp
   src/start_request.cpp
-  src/stop_request.cpp
+  src/start_request_serialization.cpp
+  src/stop_request_serialization.cpp
   src/scanner_configuration.cpp
   src/monitoring_frame_deserialization.cpp
+  src/diagnostics.cpp
+  src/scanner_reply_serialization_deserialization.cpp
 )
 
 set(${PROJECT_NAME}_node_sources
@@ -113,6 +116,7 @@ set(${PROJECT_NAME}_node_sources
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 target_link_libraries(${PROJECT_NAME}
   ${console_bridge_LIBRARIES}
+  ${rosfmt_LIBRARIES}
 )
 
 add_executable(${PROJECT_NAME}_node ${${PROJECT_NAME}_node_sources})
@@ -127,6 +131,9 @@ target_link_libraries(${PROJECT_NAME}_node
 
 install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 install(DIRECTORY config DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+install(DIRECTORY urdf/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/urdf)
 
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
@@ -185,6 +192,7 @@ if(CATKIN_ENABLE_TESTING)
     test/unit_tests/unittest_start_request.cpp
     src/start_request.cpp
     src/scanner_configuration.cpp
+    src/start_request_serialization.cpp
   )
   target_link_libraries(unittest_start_request
     ${catkin_LIBRARIES}
@@ -192,18 +200,9 @@ if(CATKIN_ENABLE_TESTING)
 
   catkin_add_gtest(unittest_stop_request
     test/unit_tests/unittest_stop_request.cpp
-    src/stop_request.cpp
+    src/stop_request_serialization.cpp
   )
   target_link_libraries(unittest_stop_request
-    ${catkin_LIBRARIES}
-  )
-
-  catkin_add_gmock(unittest_controller_state_machine
-    test/unit_tests/unittest_controller_state_machine.cpp
-    src/controller_state_machine.cpp
-    src/monitoring_frame_msg.cpp
-  )
-  target_link_libraries(unittest_controller_state_machine
     ${catkin_LIBRARIES}
   )
 
@@ -219,15 +218,6 @@ if(CATKIN_ENABLE_TESTING)
     src/scanner_configuration.cpp
   )
   target_link_libraries(unittest_scanner_configuration
-    ${catkin_LIBRARIES}
-  )
-
-  catkin_add_gmock(unittest_scanner
-    test/unit_tests/unittest_scanner.cpp
-    src/scanner_configuration.cpp
-    src/laserscan.cpp
-  )
-  target_link_libraries(unittest_scanner
     ${catkin_LIBRARIES}
   )
 
@@ -261,6 +251,7 @@ if(CATKIN_ENABLE_TESTING)
     test/unit_tests/unittest_laserscan_conversions.cpp
     src/laserscan.cpp
     src/monitoring_frame_msg.cpp
+    src/diagnostics.cpp
   )
   target_link_libraries(unittest_laserscan_conversions
     ${catkin_LIBRARIES}
@@ -269,29 +260,16 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(unittest_laserscan_ros_conversions
     test/unit_tests/unittest_laserscan_ros_conversions.cpp
     src/laserscan.cpp
+    src/monitoring_frame_msg.cpp
+    src/diagnostics.cpp
   )
   target_link_libraries(unittest_laserscan_ros_conversions
     ${catkin_LIBRARIES}
   )
 
-  catkin_add_gmock(unittest_scanner_controller
-    test/unit_tests/unittest_scanner_controller.cpp
-    test/src/monitoring_frame_serialization.cpp
-    src/controller_state_machine.cpp
-    src/laserscan.cpp
-    src/monitoring_frame_msg.cpp
-    src/monitoring_frame_deserialization.cpp
-    src/scanner_configuration.cpp
-    src/start_request.cpp
-    src/stop_request.cpp
-  )
-
-  target_link_libraries(unittest_scanner_controller
-    ${catkin_LIBRARIES}
-  )
-
   catkin_add_gtest(unittest_scanner_reply_msg
     test/unit_tests/unittest_scanner_reply_msg.cpp
+    src/scanner_reply_serialization_deserialization.cpp
   )
   target_link_libraries(unittest_scanner_reply_msg
     ${catkin_LIBRARIES}
@@ -300,6 +278,7 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(unittest_monitoring_frame_msg
     test/unit_tests/unittest_monitoring_frame_msg.cpp
     src/monitoring_frame_msg.cpp
+    src/diagnostics.cpp
     src/monitoring_frame_deserialization.cpp
   )
   target_link_libraries(unittest_monitoring_frame_msg
@@ -309,6 +288,7 @@ if(CATKIN_ENABLE_TESTING)
   catkin_add_gtest(unittest_monitoring_frame_serialization_deserialization
     src/monitoring_frame_msg.cpp
     src/monitoring_frame_deserialization.cpp
+    src/diagnostics.cpp
     test/unit_tests/unittest_monitoring_frame_serialization_deserialization.cpp
     test/src/monitoring_frame_serialization.cpp
   )
@@ -320,6 +300,15 @@ if(CATKIN_ENABLE_TESTING)
     test/unit_tests/unittest_logging.cpp
   )
   target_link_libraries(unittest_logging
+    ${catkin_LIBRARIES}
+    ${console_bridge_LIBRARIES}
+  )
+
+  catkin_add_gmock(unittest_monitoring_frame_diagnostic_message
+    src/diagnostics.cpp
+    test/unit_tests/unittest_monitoring_frame_diagnostic_message.cpp
+  )
+  target_link_libraries(unittest_monitoring_frame_diagnostic_message
     ${catkin_LIBRARIES}
     ${console_bridge_LIBRARIES}
   )
@@ -338,10 +327,19 @@ if(CATKIN_ENABLE_TESTING)
 catkin_add_gmock(integrationtest_scanner_api
   test/integration_tests/integrationtest_scanner_api.cpp
   test/src/monitoring_frame_serialization.cpp
+  src/scanner_v2.cpp
+  src/laserscan.cpp
+  src/monitoring_frame_msg.cpp
+  src/monitoring_frame_deserialization.cpp
+  src/scanner_configuration.cpp
+  src/start_request.cpp
+  src/stop_request_serialization.cpp
+  src/diagnostics.cpp
+  src/start_request_serialization.cpp
+  src/scanner_reply_serialization_deserialization.cpp
 )
 target_link_libraries(integrationtest_scanner_api
   ${catkin_LIBRARIES}
-  ${PROJECT_NAME}
   ${pilz_testutils_LIBRARIES}
   )
 
@@ -350,6 +348,8 @@ target_link_libraries(integrationtest_scanner_api
     test/integration_tests/integrationtest_ros_scanner_node.cpp
     src/laserscan.cpp
     src/scanner_configuration.cpp
+    src/monitoring_frame_msg.cpp
+    src/diagnostics.cpp
   )
   target_link_libraries(integrationtest_ros_scanner_node
     ${catkin_LIBRARIES}
@@ -364,6 +364,25 @@ target_link_libraries(integrationtest_scanner_api
     ${catkin_LIBRARIES}
     ${pilz_testutils_LIBRARIES}
   )
+
+  ######################
+  ##  Hardware-Tests  ##
+  ######################
+
+  # build this using catkin_make -DENABLE_HARDWARE_TESTING=ON
+  if(ENABLE_HARDWARE_TESTING)
+    find_package(rosbag REQUIRED)
+
+    add_rostest_gtest(hwtest_scan_compare
+        test/hw_tests/hwtest_scan_compare.test
+        test/hw_tests/hwtest_scan_compare.cpp
+    )
+    target_link_libraries(hwtest_scan_compare
+      ${catkin_LIBRARIES}
+      ${pilz_testutils_LIBRARIES}
+    )
+  endif()
+
 
   # generate coverage report using CATKIN_MAKE:
   # catkin_make -DENABLE_COVERAGE_TESTING=ON -DCMAKE_BUILD_TYPE=Debug psen_scan_v2_coverage (adding -j1 recommended)

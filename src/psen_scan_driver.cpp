@@ -21,8 +21,6 @@
 #include <ros/ros.h>
 
 #include "psen_scan_v2/function_pointers.h"
-#include "psen_scan_v2/scanner.h"
-#include "psen_scan_v2/scanner_controller.h"
 #include "psen_scan_v2/ros_parameter_handler.h"
 #include "psen_scan_v2/ros_scanner_node.h"
 #include "psen_scan_v2/default_parameters.h"
@@ -33,6 +31,7 @@
 REGISTER_ROSCONSOLE_BRIDGE;
 
 using namespace psen_scan_v2;
+using namespace psen_scan_v2::constants;
 
 std::function<void()> NODE_TERMINATE_CB;
 
@@ -70,17 +69,18 @@ int main(int argc, char** argv)
   try
   {
     DefaultScanRange scan_range{
-      TenthOfDegree::fromRad(DEFAULT_X_AXIS_ROTATION -
-                             getOptionalParamFromServer<double>(pnh, PARAM_ANGLE_END, DEFAULT_ANGLE_END)),
-      TenthOfDegree::fromRad(DEFAULT_X_AXIS_ROTATION -
-                             getOptionalParamFromServer<double>(pnh, PARAM_ANGLE_START, DEFAULT_ANGLE_START))
+      TenthOfDegree::fromRad(DEFAULT_X_AXIS_ROTATION +
+                             getOptionalParamFromServer<double>(pnh, PARAM_ANGLE_START, DEFAULT_ANGLE_START)),
+      TenthOfDegree::fromRad(DEFAULT_X_AXIS_ROTATION +
+                             getOptionalParamFromServer<double>(pnh, PARAM_ANGLE_END, DEFAULT_ANGLE_END))
     };
 
     ScannerConfiguration scanner_configuration(getRequiredParamFromServer<std::string>(pnh, PARAM_HOST_IP),
                                                getRequiredParamFromServer<int>(pnh, PARAM_HOST_DATA_PORT),
                                                getRequiredParamFromServer<int>(pnh, PARAM_HOST_CONTROL_PORT),
                                                getRequiredParamFromServer<std::string>(pnh, PARAM_SCANNER_IP),
-                                               scan_range);
+                                               scan_range,
+                                               true);
 
     ROSScannerNode ros_scanner_node(pnh,
                                     DEFAULT_PUBLISH_TOPIC,
