@@ -15,14 +15,24 @@
 #ifndef PSEN_SCAN_V2_MONITORING_FRAME_SERIALIZATION_H
 #define PSEN_SCAN_V2_MONITORING_FRAME_SERIALIZATION_H
 
-#include "psen_scan_v2/raw_scanner_data.h"
+#include "psen_scan_v2/diagnostics.h"
 #include "psen_scan_v2/monitoring_frame_msg.h"
+#include "psen_scan_v2/monitoring_frame_deserialization.h"
+#include "psen_scan_v2/raw_scanner_data.h"
 
 using namespace psen_scan_v2;
 
 namespace psen_scan_v2
 {
-DynamicSizeRawData serialize(MonitoringFrameMsg& frame);
+namespace monitoring_frame
+{
+DynamicSizeRawData serialize(const monitoring_frame::Message& frame);
+namespace diagnostic
+{
+raw_message::Field serialize(const std::vector<monitoring_frame::diagnostic::Message>& messages);
+}  // namespace diagnostic
+void write(std::ostringstream& os, const monitoring_frame::additional_field::Header& header);
+}  // namespace monitoring_frame
 }  // namespace psen_scan_v2
 
 #endif  // PSEN_SCAN_V2_MONITORING_FRAME_SERIALIZATION_H
