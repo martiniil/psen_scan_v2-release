@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0.2)
 project(psen_scan_v2)
 
 add_compile_options(-std=c++14)
@@ -36,11 +36,8 @@ find_package(fmt REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS
-    rosconsole_bridge
     roscpp
     sensor_msgs
-  DEPENDS
-    console_bridge
 )
 
 
@@ -222,7 +219,7 @@ if(CATKIN_ENABLE_TESTING)
     ${catkin_LIBRARIES}
   )
 
-  catkin_add_gmock(unittest_tenth_of_degree
+  catkin_add_gtest(unittest_tenth_of_degree
     test/unit_tests/unittest_tenth_of_degree.cpp
   )
 
