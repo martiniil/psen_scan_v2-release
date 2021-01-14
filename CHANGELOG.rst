@@ -2,6 +2,13 @@
 Changelog for package psen_scan_v2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.4 (2021-01-13)
+------------------
+* Add internal error handling for detecting regressions in the scanner firmware
+* Make specifying udp ports optional
+* Contributors: Pilz GmbH and Co. KG
+
+
 0.1.3 (2020-12-09)
 ------------------
 * Add ROS noetic support (`#103 <https://github.com/PilzDE/psen_scan_v2/issues/103>`_)
