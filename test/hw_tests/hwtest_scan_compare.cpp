@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Pilz GmbH & Co. KG
+// Copyright (c) 2020-2021 Pilz GmbH & Co. KG
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
@@ -16,9 +16,6 @@
 #include <ros/ros.h>
 #include <gtest/gtest.h>
 
-#include <boost/filesystem.hpp>
-#include <boost/function.hpp>
-#include <boost/bind.hpp>
 #include <functional>
 
 #include <algorithm>
@@ -30,14 +27,17 @@
 
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
+#include <rosbag/exceptions.h>
 #include <sensor_msgs/LaserScan.h>
 
-#include "psen_scan_v2/angle_conversions.h"
 #include "psen_scan_v2/dist.h"
 #include "psen_scan_v2/laserscan_validator.h"
 
 namespace psen_scan_v2_test
 {
+typedef sensor_msgs::LaserScan ScanType;
+typedef boost::shared_ptr<ScanType const> ScanConstPtr;
+
 std::map<int16_t, NormalDist> binsFromRosbag(std::string filepath)
 {
   std::map<int16_t, NormalDist> bins;
@@ -51,8 +51,8 @@ std::map<int16_t, NormalDist> binsFromRosbag(std::string filepath)
   rosbag::View view(bag, rosbag::TopicQuery(topics));
 
   std::for_each(view.begin(), view.end(), [&bins](const rosbag::MessageInstance& msg) {
-    sensor_msgs::LaserScanConstPtr scan = msg.instantiate<sensor_msgs::LaserScan>();
-    addScanToBin(scan, bins);
+    ScanConstPtr scan = msg.instantiate<ScanType>();
+    addScanToBin(*scan, bins);
   });
 
   bag.close();
@@ -63,7 +63,7 @@ std::map<int16_t, NormalDist> binsFromRosbag(std::string filepath)
 class ScanComparisonTests : public ::testing::Test
 {
 public:
-  static void SetUpTestCase()
+  static void SetUpTestSuite()
   {
     ros::NodeHandle pnh{ "~" };
 
@@ -71,13 +71,20 @@ public:
     pnh.getParam("testfile", filepath);
 
     ROS_INFO_STREAM("Using testfile " << filepath);
-    if (!boost::filesystem::exists(filepath))
-    {
-      ROS_ERROR_STREAM("File " << filepath << " not found!");
-      FAIL();
-    }
 
-    bins_expected_ = binsFromRosbag(filepath);
+    try
+    {
+      bins_expected_ = binsFromRosbag(filepath);
+    }
+    catch (const rosbag::BagIOException& e)
+    {
+      FAIL() << "File " << filepath
+             << " could not be opened. Make sure the file exists and the you have sufficient rights to open it.";
+    }
+    catch (const rosbag::BagException& e)
+    {
+      FAIL() << "There was an error opening " << filepath;
+    }
 
     ASSERT_TRUE(pnh.getParam("test_duration", test_duration_));
   }
@@ -96,9 +103,14 @@ TEST_F(ScanComparisonTests, simpleCompare)
 
   size_t window_size = 120;  // Keep this high to avoid undersampling
 
-  auto res = LaserScanValidator(nh, bins_expected_).validateScans(window_size, "/laser_scanner/scan", test_duration_);
+  LaserScanValidator<ScanType> laser_scan_validator(bins_expected_);
+  laser_scan_validator.reset();
+  nh.subscribe<ScanType>(
+      "/laser_scanner/scan",
+      1000,
+      boost::bind(&LaserScanValidator<ScanType>::scanCb, &laser_scan_validator, boost::placeholders::_1, window_size));
 
-  ASSERT_TRUE(res);
+  ASSERT_TRUE(laser_scan_validator.waitForResult(test_duration_));
 }
 
 }  // namespace psen_scan_v2_test
