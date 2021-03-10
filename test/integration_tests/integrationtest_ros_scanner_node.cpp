@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Pilz GmbH & Co. KG
+// Copyright (c) 2020-2021 Pilz GmbH & Co. KG
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
@@ -26,21 +26,24 @@
 #include <sensor_msgs/LaserScan.h>
 #include <pilz_testutils/async_test.h>
 
-#include "psen_scan_v2/angle_conversions.h"
-#include "psen_scan_v2/ros_scanner_node.h"
-#include "psen_scan_v2/laserscan.h"
-#include "psen_scan_v2/scanner_mock.h"
-#include "psen_scan_v2/scanner_configuration.h"
-#include "psen_scan_v2/scanner_config_builder.h"
-#include "psen_scan_v2/default_parameters.h"
-#include "psen_scan_v2/scan_range.h"
+#include "psen_scan_v2_standalone/data_conversion_layer/angle_conversions.h"
+#include "psen_scan_v2_standalone/laserscan.h"
+#include "psen_scan_v2_standalone/scanner_configuration.h"
+#include "psen_scan_v2_standalone/scanner_config_builder.h"
+#include "psen_scan_v2_standalone/configuration/default_parameters.h"
+#include "psen_scan_v2_standalone/scan_range.h"
+
 #include "psen_scan_v2/laserscan_ros_conversions.h"
+#include "psen_scan_v2/ros_scanner_node.h"
+
+#include "psen_scan_v2/scanner_mock.h"
 
 using namespace psen_scan_v2;
+using namespace psen_scan_v2_standalone;
 using namespace psen_scan_v2_test;
 
 using namespace ::testing;
-using namespace psen_scan_v2::constants;
+using namespace psen_scan_v2_standalone::configuration;
 
 namespace psen_scan_v2
 {
@@ -90,7 +93,7 @@ static const std::string HOST_IP{ "127.0.0.1" };
 static constexpr int HOST_UDP_PORT_DATA{ 50505 };
 static constexpr int HOST_UDP_PORT_CONTROL{ 55055 };
 static const std::string DEVICE_IP{ "127.0.0.100" };
-static constexpr DefaultScanRange SCAN_RANGE{ TenthOfDegree(0), TenthOfDegree(2750) };
+static constexpr ScanRange SCAN_RANGE{ util::TenthOfDegree(0), util::TenthOfDegree(2750) };
 static constexpr int SCANNER_STARTED_TIMEOUT_MS{ 3000 };
 static constexpr int SCANNER_STOPPED_TIMEOUT_MS{ 3000 };
 static constexpr int LASERSCAN_RECEIVED_TIMEOUT{ 3000 };
@@ -102,8 +105,8 @@ static ScannerConfiguration createValidConfig()
       .hostDataPort(HOST_UDP_PORT_DATA)
       .hostControlPort(HOST_UDP_PORT_CONTROL)
       .scannerIp(DEVICE_IP)
-      .scannerDataPort(DATA_PORT_OF_SCANNER_DEVICE)
-      .scannerControlPort(CONTROL_PORT_OF_SCANNER_DEVICE)
+      .scannerDataPort(configuration::DATA_PORT_OF_SCANNER_DEVICE)
+      .scannerControlPort(configuration::CONTROL_PORT_OF_SCANNER_DEVICE)
       .scanRange(SCAN_RANGE)
       .build();
 }
@@ -117,7 +120,8 @@ protected:
 
 TEST_F(RosScannerNodeTests, testScannerInvocation)
 {
-  ROSScannerNodeT<ScannerMock> ros_scanner_node(nh_priv_, "scan", "scanner", DEFAULT_X_AXIS_ROTATION, scanner_config_);
+  ROSScannerNodeT<ScannerMock> ros_scanner_node(
+      nh_priv_, "scan", "scanner", configuration::DEFAULT_X_AXIS_ROTATION, scanner_config_);
 
   std::promise<void> start_stop_barrier;
   start_stop_barrier.set_value();
@@ -139,7 +143,7 @@ TEST_F(RosScannerNodeTests, testScannerInvocation)
 
 TEST_F(RosScannerNodeTests, testScanTopicReceived)
 {
-  LaserScan laser_scan_fake(TenthOfDegree(1), TenthOfDegree(3), TenthOfDegree(5));
+  LaserScan laser_scan_fake(util::TenthOfDegree(1), util::TenthOfDegree(3), util::TenthOfDegree(5));
   laser_scan_fake.getMeasurements().push_back(1);
 
   SubscriberMock subscriber;
@@ -147,7 +151,8 @@ TEST_F(RosScannerNodeTests, testScanTopicReceived)
       .WillOnce(testing::Return())
       .WillOnce(ACTION_OPEN_BARRIER_VOID(LASER_SCAN_RECEIVED));
 
-  ROSScannerNodeT<ScannerMock> ros_scanner_node(nh_priv_, "scan", "scanner", DEFAULT_X_AXIS_ROTATION, scanner_config_);
+  ROSScannerNodeT<ScannerMock> ros_scanner_node(
+      nh_priv_, "scan", "scanner", configuration::DEFAULT_X_AXIS_ROTATION, scanner_config_);
 
   std::promise<void> start_stop_barrier;
   start_stop_barrier.set_value();
@@ -169,7 +174,8 @@ TEST_F(RosScannerNodeTests, testScanTopicReceived)
 
 TEST_F(RosScannerNodeTests, testMissingStopReply)
 {
-  ROSScannerNodeT<ScannerMock> ros_scanner_node(nh_priv_, "scan", "scanner", DEFAULT_X_AXIS_ROTATION, scanner_config_);
+  ROSScannerNodeT<ScannerMock> ros_scanner_node(
+      nh_priv_, "scan", "scanner", configuration::DEFAULT_X_AXIS_ROTATION, scanner_config_);
 
   std::promise<void> start_barrier;
   start_barrier.set_value();
@@ -186,37 +192,6 @@ TEST_F(RosScannerNodeTests, testMissingStopReply)
 
   std::future<void> loop = std::async(std::launch::async, [&ros_scanner_node]() { ros_scanner_node.run(); });
   BARRIER(SCANNER_STARTED, SCANNER_STARTED_TIMEOUT_MS);
-  ros_scanner_node.terminate();
-  EXPECT_EQ(loop.wait_for(LOOP_END_TIMEOUT), std::future_status::ready);
-}
-
-TEST_F(RosScannerNodeTests, shouldNotInvokeUserCallbackInCaseOfEmptyLaserScan)
-{
-  LaserScan empty_scan(TenthOfDegree(1), TenthOfDegree(3), TenthOfDegree(5));
-  LaserScan scan_with_data(TenthOfDegree(1), TenthOfDegree(3), TenthOfDegree(5));
-  scan_with_data.getMeasurements().push_back(7);
-
-  const std::string prefix{ "scanner" };
-  SubscriberMock subscriber;
-  EXPECT_CALL(subscriber, callback(IsRosScanEqual(toLaserScanMsg(scan_with_data, prefix, DEFAULT_X_AXIS_ROTATION))))
-      .WillOnce(ACTION_OPEN_BARRIER_VOID(LASER_SCAN_RECEIVED));
-
-  ROSScannerNodeT<ScannerMock> ros_scanner_node(nh_priv_, "scan", prefix, DEFAULT_X_AXIS_ROTATION, scanner_config_);
-
-  std::promise<void> start_stop_barrier;
-  start_stop_barrier.set_value();
-  EXPECT_CALL(ros_scanner_node.scanner_, start())
-      .WillOnce(DoAll(ACTION_OPEN_BARRIER_VOID(SCANNER_STARTED), Return_Future(start_stop_barrier)));
-
-  subscriber.initialize(nh_priv_);
-  std::future<void> loop = std::async(std::launch::async, [&ros_scanner_node]() { ros_scanner_node.run(); });
-
-  BARRIER(SCANNER_STARTED, SCANNER_STARTED_TIMEOUT_MS);
-
-  ros_scanner_node.scanner_.invokeLaserScanCallback(empty_scan);
-  ros_scanner_node.scanner_.invokeLaserScanCallback(scan_with_data);
-
-  BARRIER(LASER_SCAN_RECEIVED, LASERSCAN_RECEIVED_TIMEOUT);
   ros_scanner_node.terminate();
   EXPECT_EQ(loop.wait_for(LOOP_END_TIMEOUT), std::future_status::ready);
 }

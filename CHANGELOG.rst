@@ -2,6 +2,20 @@
 Changelog for package psen_scan_v2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.1.5 (2021-03-10)
+------------------
+* Make specifying host ip optional
+* Reorder Readme sections
+* API change: A scan is published only if it contains measurement data
+* Make tests build in standalone with or without ROS installed
+* Document key components in a meaningful expressive way
+* Enable building the standalone lib using MSVC
+* Enable separate building of cpp-lib; extract sources into subproject psen_scan_v2_standalone
+* Renames ScanRange and DefaultScanRange to improve usability
+* Improve namespace hierarchy and move files to respective subfolders
+* Use defaults ports in ScannerConfiguration
+* Contributors: Pilz GmbH and Co. KG
+
 0.1.4 (2021-01-13)
 ------------------
 * Add internal error handling for detecting regressions in the scanner firmware
