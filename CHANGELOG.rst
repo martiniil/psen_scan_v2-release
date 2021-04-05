@@ -2,6 +2,15 @@
 Changelog for package psen_scan_v2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0 (2021-04-05)
+------------------
+* Combine multiple monitoring frames into one scan (`#173 <https://github.com/PilzDE/psen_scan_v2/issues/173>`_)
+* Contributors: Pilz GmbH and Co. KG
+
+* API change: Driver waits for scan round to complete before sending measurement data by default
+* Introducing new parameter fragmented_scans to switch back to faster fragmented laser_scan messages
+* Contributors: Pilz GmbH and Co. KG
+
 0.1.6 (2021-03-22)
 ------------------
 * Separate ROS and standalone CMakeLists: Closes #169
